@@ -1,0 +1,40 @@
+
+> app@0.1.0 build
+> next build
+
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+⚠ `eslint` configuration in next.config.ts is no longer supported. See more info here: https://nextjs.org/docs/app/api-reference/cli/next#next-lint-options
+⚠ Invalid next.config.ts options detected: 
+⚠     Unrecognized key(s) in object: 'eslint'
+⚠ See more info here: https://nextjs.org/docs/messages/invalid-next-config
+▲ Next.js 16.1.6 (Turbopack)
+
+  Creating an optimized production build ...
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+
+-----
+FATAL: An unexpected Turbopack error occurred. A panic log has been written to C:\Users\MADHAN~1\AppData\Local\Temp\next-panic-9e1349ca93c66ea5471c75da4260f059.log.
+
+To help make Turbopack better, report this error by clicking here.
+-----
+
+
+> Build error occurred
+Error [TurbopackInternalError]: reading file D:\Madhan Kumar\Web Development Projects\esperanza\src\app\team
+
+Caused by:
+- Access is denied. (os error 5)
+
+Debug info:
+- Execution of get_all_written_entrypoints_with_issues_operation failed
+- Execution of PlainIssue::from_issue failed
+- Execution of PlainSource::from_source failed
+- Execution of <WebpackLoadersProcessedAsset as Asset>::content failed
+- Execution of WebpackLoadersProcessedAsset::process failed
+- Execution of <DiskFileSystem as FileSystem>::read failed
+- reading file D:\Madhan Kumar\Web Development Projects\esperanza\src\app\team
+- Access is denied. (os error 5)
+    at <unknown> (TurbopackInternalError: reading file D:\Madhan Kumar\Web Development Projects\esperanza\src\app\team) {
+  type: 'TurbopackInternalError',
+  location: undefined
+}
