@@ -29,6 +29,7 @@ const emptyEvent: Event = {
     category: 'Cultural',
     participationType: 'Solo',
     teamSize: '',
+    coordinatorPhone: '', // Event coordinator contact
     isPassEvent: true, // Default to Pass-based pricing
     ticketTiers: [],
     entryFee: 0,
@@ -84,6 +85,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ content, setContent, eve
 
     const [registrations, setRegistrations] = useState<Registration[]>([]);
     const [isLoadingRegs, setIsLoadingRegs] = useState(false);
+    const [selectedEventFilter, setSelectedEventFilter] = useState<string>('all'); // 'all' or eventId
 
     // Registration View Modal State
     const [selectedRegistration, setSelectedRegistration] = useState<Registration | null>(null);
@@ -293,8 +295,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ content, setContent, eve
     };
 
     const handleSaveEvent = () => {
-        if (!newEvent.title || !newEvent.date || !newEvent.description) {
-            alert("Please fill in all required fields (Title, Date, Description)");
+        if (!newEvent.title || !newEvent.description) {
+            alert("Please fill in all required fields (Title, Description)");
             return;
         }
 
@@ -426,7 +428,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ content, setContent, eve
                 {/* NAVIGATION TABS */}
                 {!isAddingEvent && !isAddingTeamMember && (
                     <div className="flex border-b border-white/10 overflow-x-auto">
-                        {['general', 'gallery', 'events', 'registrations', 'team', 'faq'].map((tab) => (
+                        {['general', 'events', 'registrations', 'team', 'faq'].map((tab) => (
                             <button
                                 key={tab}
                                 onClick={() => setActiveTab(tab)}
@@ -469,88 +471,196 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ content, setContent, eve
                                     </label>
                                 </div>
                             </div>
-                        </div>
-                    )}
 
-                    {/* --- GALLERY MANAGEMENT --- */}
-                    {activeTab === 'gallery' && (
-                        <div className="space-y-6">
-                            <div className="flex items-center justify-between">
-                                <h3 className="text-xl font-bold flex items-center gap-2">
-                                    <span>Gallery Images</span>
-                                    <span className="text-sm font-normal text-gray-400">({content.galleryImages?.length || 0})</span>
-                                </h3>
-                                <div className="w-48">
-                                    <FileUploader
-                                        label="Upload Image"
-                                        onUpload={(asset) => {
-                                            if (asset) {
-                                                const newImages = [...(content.galleryImages || []), asset];
-                                                setContent({ ...content, galleryImages: newImages });
-                                                saveContentToBackend({ ...content, galleryImages: newImages });
-                                            }
-                                        }}
-                                        folder="gallery"
-                                    />
+                            {/* Ticket Prices */}
+                            <div className="p-6 bg-[#1a1a1a] rounded-xl border border-white/5 space-y-4">
+                                <h3 className="text-xl font-bold text-white mb-4">Ticket Prices</h3>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    {['diamond', 'gold', 'silver'].map((tier) => (
+                                        <div key={tier} className="space-y-2">
+                                            <label className="text-gray-400 text-sm capitalize">{tier} Pass (₹)</label>
+                                            <input
+                                                type="number"
+                                                value={content.ticketPrices?.[tier] || 0}
+                                                onChange={(e) => {
+                                                    const newPrices = { ...(content.ticketPrices || {}), [tier]: parseInt(e.target.value) || 0 };
+                                                    const newContent = { ...content, ticketPrices: newPrices };
+                                                    setContent(newContent);
+                                                    saveContentToBackend(newContent, true);
+                                                }}
+                                                className="w-full bg-[#222] border border-white/10 rounded-lg p-3 text-white focus:outline-none focus:border-purple-500"
+                                            />
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                                {content.galleryImages?.map((img, index) => (
-                                    <div key={index} className="relative group aspect-square bg-gray-800 rounded-lg overflow-hidden border border-white/10">
-                                        <img src={img.url} alt="Gallery" className="w-full h-full object-cover" />
-                                        <button
-                                            onClick={() => {
-                                                if (confirm('Delete this image?')) {
-                                                    const newImages = content.galleryImages.filter((_, i) => i !== index);
-                                                    setContent({ ...content, galleryImages: newImages });
-                                                    saveContentToBackend({ ...content, galleryImages: newImages });
-                                                }
-                                            }}
-                                            className="absolute top-2 right-2 p-1.5 bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-700 shadow-lg"
-                                            title="Delete Image"
-                                        >
-                                            <FaTrash size={12} />
-                                        </button>
-                                    </div>
-                                ))}
-                                {(!content.galleryImages || content.galleryImages.length === 0) && (
-                                    <div className="col-span-full text-center py-10 text-gray-500 bg-white/5 rounded-xl border border-dashed border-white/10">
-                                        No images in gallery yet. Upload one to get started.
-                                    </div>
-                                )}
+                            {/* Payment Configuration */}
+                            <div className="p-6 bg-[#1a1a1a] rounded-xl border border-white/5 space-y-4">
+                                <h3 className="text-xl font-bold text-white mb-4">Payment Configuration</h3>
+
+                                <div className="space-y-2">
+                                    <label className="text-gray-400 text-sm">UPI ID</label>
+                                    <input
+                                        type="text"
+                                        value={content.upiId || ''}
+                                        onChange={(e) => {
+                                            const newContent = { ...content, upiId: e.target.value };
+                                            setContent(newContent);
+                                            saveContentToBackend(newContent, true);
+                                        }}
+                                        className="w-full bg-[#222] border border-white/10 rounded-lg p-3 text-white focus:outline-none focus:border-purple-500"
+                                        placeholder="yourname@upi"
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <FileUploader
+                                        label="Payment QR Code"
+                                        initialUrl={content.qrCodeUrl ? { url: content.qrCodeUrl, type: 'image' } : null}
+                                        onUpload={(asset) => {
+                                            if (asset) {
+                                                const newContent = { ...content, qrCodeUrl: asset.url };
+                                                setContent(newContent);
+                                                saveContentToBackend(newContent, true);
+                                            }
+                                        }}
+                                        folder="payment"
+                                    />
+                                    {content.qrCodeUrl && (
+                                        <div className="mt-2">
+                                            <p className="text-xs text-gray-400 mb-2">Current QR Code:</p>
+                                            <img src={content.qrCodeUrl} alt="Payment QR" className="w-48 h-48 object-contain bg-white rounded-lg p-2" />
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Save Button */}
+                            <div className="flex justify-end pt-4">
+                                <button
+                                    onClick={() => saveContentToBackend(content)}
+                                    className="px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl font-bold text-white shadow-lg shadow-purple-900/40 hover:scale-105 transition-transform flex items-center gap-2"
+                                >
+                                    <FaSave size={20} /> Save All Changes
+                                </button>
                             </div>
                         </div>
                     )}
+
+
                     {/* --- REGISTRATION LIST VIEW --- */}
                     {activeTab === 'registrations' && !isAddingEvent && !isAddingTeamMember && (
                         <div className="space-y-6">
-                            <h3 className="text-xl font-bold flex items-center justify-between">
-                                <span>All Registrations ({registrations.length})</span>
-                                <button
-                                    onClick={fetchRegistrations}
-                                    className="text-sm bg-white/10 px-3 py-1 rounded hover:bg-white/20 transition-colors"
-                                >
-                                    Refresh
-                                </button>
-                            </h3>
+                            <div className="flex items-center justify-between">
+                                <h3 className="text-xl font-bold">
+                                    {selectedEventFilter === 'all'
+                                        ? `All Registrations (${registrations.length})`
+                                        : `${events.find(e => e.id === selectedEventFilter)?.title || 'Event'} Registrations (${registrations.filter(r => r.eventId === selectedEventFilter).length})`
+                                    }
+                                </h3>
+                                <div className="flex gap-2">
+                                    {selectedEventFilter !== 'all' && (
+                                        <button
+                                            onClick={() => setSelectedEventFilter('all')}
+                                            className="text-sm bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded transition-colors"
+                                        >
+                                            ← Back to Events
+                                        </button>
+                                    )}
+                                    <button
+                                        onClick={fetchRegistrations}
+                                        className="text-sm bg-white/10 px-3 py-1 rounded hover:bg-white/20 transition-colors"
+                                    >
+                                        Refresh
+                                    </button>
+                                </div>
+                            </div>
 
                             {isLoadingRegs ? (
                                 <div className="text-center py-20 text-gray-400">Loading registrations...</div>
+                            ) : selectedEventFilter === 'all' ? (
+                                /* SHOW EVENT CARDS */
+                                <div>
+                                    <p className="text-gray-400 text-sm mb-4">Select an event to view its registrations</p>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                        {/* All Registrations Card */}
+                                        <div
+                                            onClick={() => setSelectedEventFilter('all-list')}
+                                            className="bg-gradient-to-br from-purple-600/20 to-pink-600/20 border border-purple-500/30 rounded-xl p-6 cursor-pointer hover:scale-105 transition-transform group"
+                                        >
+                                            <div className="flex items-center justify-between mb-3">
+                                                <h4 className="font-bold text-white text-lg">All Registrations</h4>
+                                                <FaList className="text-purple-400 text-2xl" />
+                                            </div>
+                                            <p className="text-3xl font-bold text-white mb-2">{registrations.length}</p>
+                                            <p className="text-sm text-gray-300">Total registrations across all events</p>
+                                            <div className="mt-4 flex items-center gap-2 text-purple-300 text-sm group-hover:text-purple-200">
+                                                <span>View All</span>
+                                                <FaArrowLeft className="rotate-180" />
+                                            </div>
+                                        </div>
+
+                                        {/* Individual Event Cards */}
+                                        {events.map(event => {
+                                            const eventRegs = registrations.filter(r => r.eventId === event.id);
+                                            const verifiedCount = eventRegs.filter(r => r.isActive).length;
+                                            const pendingCount = eventRegs.length - verifiedCount;
+
+                                            return (
+                                                <div
+                                                    key={event.id}
+                                                    onClick={() => setSelectedEventFilter(event.id)}
+                                                    className="bg-[#1a1a1a] border border-white/10 rounded-xl p-6 cursor-pointer hover:border-purple-500/50 hover:scale-105 transition-all group"
+                                                >
+                                                    <div className="flex items-start justify-between mb-3">
+                                                        <div className="flex-1">
+                                                            <h4 className="font-bold text-white text-lg mb-1 line-clamp-1">{event.title}</h4>
+                                                            <span className="text-xs bg-purple-500/10 text-purple-400 px-2 py-0.5 rounded uppercase tracking-wider">
+                                                                {event.category}
+                                                            </span>
+                                                        </div>
+                                                        <FaUsers className="text-gray-400 text-xl ml-2" />
+                                                    </div>
+
+                                                    <div className="space-y-2 mb-4">
+                                                        <div className="flex items-center justify-between">
+                                                            <span className="text-2xl font-bold text-white">{eventRegs.length}</span>
+                                                            <span className="text-xs text-gray-400">registrations</span>
+                                                        </div>
+                                                        <div className="flex gap-2 text-xs">
+                                                            <span className="text-green-400">✓ {verifiedCount} verified</span>
+                                                            <span className="text-yellow-400">⏳ {pendingCount} pending</span>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="flex items-center gap-2 text-purple-400 text-sm group-hover:text-purple-300">
+                                                        <span>View Registrations</span>
+                                                        <FaArrowLeft className="rotate-180" />
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
                             ) : (
+                                /* SHOW REGISTRATION TABLE FOR SELECTED EVENT */
                                 <div className="overflow-x-auto">
                                     <table className="w-full text-left border-collapse">
                                         <thead>
                                             <tr className="border-b border-white/10 text-gray-500 text-sm">
                                                 <th className="p-3">Name</th>
-                                                <th className="p-3">Collge</th>
+                                                <th className="p-3">College</th>
                                                 <th className="p-3">Event/Pass</th>
                                                 <th className="p-3">Status</th>
                                                 <th className="p-3">Actions</th>
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {registrations.map(reg => (
+                                            {(selectedEventFilter === 'all-list'
+                                                ? registrations
+                                                : registrations.filter(r => r.eventId === selectedEventFilter)
+                                            ).map(reg => (
                                                 <tr key={reg._id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
                                                     <td className="p-3 font-medium">{reg.name}</td>
                                                     <td className="p-3 text-sm text-gray-400">{reg.college}</td>
@@ -574,6 +684,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ content, setContent, eve
                                             ))}
                                         </tbody>
                                     </table>
+                                    {(selectedEventFilter === 'all-list'
+                                        ? registrations
+                                        : registrations.filter(r => r.eventId === selectedEventFilter)
+                                    ).length === 0 && (
+                                            <div className="text-center py-10 text-gray-500">
+                                                No registrations found for this event yet.
+                                            </div>
+                                        )}
                                 </div>
                             )}
                         </div>
@@ -680,42 +798,30 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ content, setContent, eve
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-gray-400 text-sm">Category</label>
-                                    <select
+                                    <label className="text-gray-400 text-sm">Category *</label>
+                                    <input
+                                        type="text"
+                                        placeholder="Ex: Cultural, Technical, Workshop, etc."
                                         value={newEvent.category}
                                         onChange={(e) => setNewEvent({ ...newEvent, category: e.target.value })}
-                                        className="w-full bg-[#222] border border-white/10 rounded-lg p-3 text-white focus:outline-none focus:border-purple-500"
-                                    >
-                                        <option value="Cultural">Cultural</option>
-                                        <option value="Technical">Technical</option>
-                                        <option value="Proshow">Proshow</option>
-                                        <option value="Workshop">Workshop</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="space-y-2">
-                                    <label className="text-gray-400 text-sm">Date *</label>
-                                    <input
-                                        type="date"
-                                        value={newEvent.date}
-                                        onChange={(e) => setNewEvent({ ...newEvent, date: e.target.value })}
-                                        className="w-full bg-[#222] border border-white/10 rounded-lg p-3 text-white focus:outline-none focus:border-purple-500"
+                                        className="w-full bg-[#222] border border-white/10 rounded-lg p-3 text-white placeholder:text-gray-600 focus:outline-none focus:border-purple-500"
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-gray-400 text-sm">Time</label>
+                                    <label className="text-gray-400 text-sm">Coordinator Phone</label>
                                     <input
-                                        type="time"
-                                        value={newEvent.time}
-                                        onChange={(e) => setNewEvent({ ...newEvent, time: e.target.value })}
-                                        className="w-full bg-[#222] border border-white/10 rounded-lg p-3 text-white focus:outline-none focus:border-purple-500"
+                                        type="tel"
+                                        placeholder="Ex: +91 9876543210"
+                                        value={newEvent.coordinatorPhone || ''}
+                                        onChange={(e) => setNewEvent({ ...newEvent, coordinatorPhone: e.target.value })}
+                                        className="w-full bg-[#222] border border-white/10 rounded-lg p-3 text-white placeholder:text-gray-600 focus:outline-none focus:border-purple-500"
                                     />
                                 </div>
                             </div>
+
                             <div className="space-y-2">
                                 <FileUploader
-                                    label="Event Poster"
+                                    label="Event Media (Image/Video)"
                                     initialUrl={newEvent.image}
                                     onUpload={(asset) => setNewEvent({ ...newEvent, image: asset })}
                                     folder="events"
@@ -918,175 +1024,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ content, setContent, eve
                         </div>
                     ) : (
                         <>
-                            {/* --- GENERAL SETTINGS --- */}
-                            {activeTab === 'general' && (
-                                <div className="space-y-8 max-w-4xl mx-auto">
-                                    <div className="space-y-6">
-                                        <h3 className="text-white font-bold text-lg border-b border-white/10 pb-2">
-                                            Landing Page Details
-                                        </h3>
-                                        <div className="space-y-2">
-                                            <label className="text-gray-400 text-sm">Hero Title</label>
-                                            <input
-                                                type="text"
-                                                value={content.heroTitle}
-                                                onChange={(e) => handleContentChange('heroTitle', e.target.value)}
-                                                className="w-full bg-[#222] border border-white/10 rounded-lg p-3 text-white focus:outline-none focus:border-purple-500"
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="text-gray-400 text-sm">Hero Subtitle</label>
-                                            <textarea
-                                                value={content.heroSubtitle}
-                                                onChange={(e) => handleContentChange('heroSubtitle', e.target.value)}
-                                                className="w-full bg-[#222] border border-white/10 rounded-lg p-3 text-white focus:outline-none focus:border-purple-500 h-24"
-                                            />
-                                        </div>
-
-                                        <div className="space-y-2">
-                                            <FileUploader
-                                                label="Hero Background (Image/Video)"
-                                                type="video" // Allow video primarily but component handles both
-                                                initialUrl={content.heroBackgroundMedia}
-                                                onUpload={(asset) => handleContentChange('heroBackgroundMedia', asset)}
-                                                folder="hero"
-                                            />
-                                        </div>
-
-                                        <div className="space-y-2">
-                                            <label className="text-gray-400 text-sm flex items-center gap-2">
-                                                <FaFont size={16} className="text-purple-400" /> Marquee / Scrolling Text
-                                            </label>
-                                            <input
-                                                type="text"
-                                                value={content.marqueeText}
-                                                onChange={(e) => handleContentChange('marqueeText', e.target.value)}
-                                                className="w-full bg-[#222] border border-white/10 rounded-lg p-3 text-white focus:outline-none focus:border-purple-500"
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="text-gray-400 text-sm">Event Date</label>
-                                            <input
-                                                type="datetime-local"
-                                                value={content.eventDate}
-                                                onChange={(e) => handleContentChange('eventDate', e.target.value)}
-                                                className="w-full bg-[#222] border border-white/10 rounded-lg p-3 text-white focus:outline-none focus:border-purple-500"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div className="space-y-6 pt-6">
-                                        <h3 className="text-white font-bold text-lg border-b border-white/10 pb-2">
-                                            Ticket Pricing
-                                        </h3>
-                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                            {Object.keys(content.ticketPrices || {}).map((tier) => (
-                                                <div key={tier} className="space-y-2">
-                                                    <label className="text-gray-400 text-sm capitalize">
-                                                        {tier} Pass (₹)
-                                                    </label>
-                                                    <input
-                                                        type="number"
-                                                        value={content.ticketPrices[tier] || 0}
-                                                        onChange={(e) => handlePriceChange(tier, e.target.value)}
-                                                        className="w-full bg-[#222] border border-white/10 rounded-lg p-3 text-white focus:outline-none focus:border-purple-500"
-                                                    />
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                    {/* ... (Payment Config same as before) ... */}
-                                    <div className="space-y-6 pt-6">
-                                        <h3 className="text-white font-bold text-lg border-b border-white/10 pb-2">
-                                            Payment Configuration
-                                        </h3>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            <div className="space-y-2">
-                                                <label className="text-gray-400 text-sm">UPI ID</label>
-                                                <input
-                                                    type="text"
-                                                    value={content.upiId}
-                                                    onChange={(e) => handleContentChange('upiId', e.target.value)}
-                                                    className="w-full bg-[#222] border border-white/10 rounded-lg p-3 text-white focus:outline-none focus:border-purple-500"
-                                                />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <label className="text-gray-400 text-sm">Payment QR Code URL</label>
-                                                <input
-                                                    type="text"
-                                                    value={content.qrCodeUrl}
-                                                    onChange={(e) => handleContentChange('qrCodeUrl', e.target.value)}
-                                                    className="w-full bg-[#222] border border-white/10 rounded-lg p-3 text-white focus:outline-none focus:border-purple-500"
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* GALLERY SECTION */}
-                                    <div className="space-y-6 pt-6">
-                                        <h3 className="text-white font-bold text-lg border-b border-white/10 pb-2 flex items-center justify-between">
-                                            <span>Image Gallery</span>
-                                        </h3>
-
-                                        <div className="flex gap-2">
-                                            <input
-                                                type="text"
-                                                value={newGalleryUrl}
-                                                onChange={(e) => setNewGalleryUrl(e.target.value)}
-                                                placeholder="Paste Image URL or Upload below to get URL"
-                                                className="flex-1 bg-[#222] border border-white/10 rounded-lg p-3 text-white focus:outline-none focus:border-purple-500"
-                                            />
-                                            <button
-                                                onClick={handleAddGalleryItem}
-                                                className="px-6 bg-white/10 hover:bg-white/20 text-white rounded-lg font-bold"
-                                            >
-                                                Add
-                                            </button>
-                                        </div>
-
-                                        <div className="space-y-2">
-                                            <FileUploader
-                                                label="Upload New Gallery Image"
-                                                onUpload={(asset) => {
-                                                    if (asset) {
-                                                        setNewGalleryUrl(asset.url);
-                                                    }
-                                                }}
-                                                folder="gallery"
-                                            />
-                                        </div>
-
-                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                            {content.galleryImages?.map((img, idx) => (
-                                                <div key={idx} className="relative group aspect-square rounded-xl overflow-hidden bg-black/50 border border-white/10">
-                                                    {img.type === 'video' ? (
-                                                        <video src={img.url} className="w-full h-full object-cover" />
-                                                    ) : (
-                                                        <img src={img.url} alt="Gallery" className="w-full h-full object-cover" />
-                                                    )}
-                                                    <button
-                                                        onClick={() => handleDeleteGalleryItem(idx)}
-                                                        className="absolute top-2 right-2 p-1.5 bg-red-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                                                    >
-                                                        <FaTrash size={14} className="text-white" />
-                                                    </button>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-
-
-                                    <div className="flex justify-end pt-8">
-                                        <button
-                                            onClick={() => saveContentToBackend(content)}
-                                            className="px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl font-bold text-white shadow-lg shadow-purple-900/40 hover:scale-105 transition-transform flex items-center gap-2"
-                                        >
-                                            <FaSave size={20} /> Save All Changes
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
                         </>
                     )}
 
@@ -1170,87 +1107,89 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ content, setContent, eve
             </div>
 
             {/* --- REGISTRATION DETAILS MODAL --- */}
-            {selectedRegistration && (
-                <div className="fixed inset-0 z-[150] bg-black/80 flex items-center justify-center p-4">
-                    <div className="bg-[#181818] border border-white/10 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
-                        <div className="p-6 border-b border-white/10 flex justify-between items-center">
-                            <h3 className="text-xl font-bold">Registration Details</h3>
-                            <button onClick={() => setSelectedRegistration(null)} className="p-2 hover:bg-white/10 rounded-full"><FaTimes size={20} /></button>
-                        </div>
-                        <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="text-xs text-gray-500 uppercase">Applicant</label>
-                                    <p className="text-lg font-bold">{selectedRegistration.name}</p>
-                                    <p className="text-sm text-gray-400">{selectedRegistration.email}</p>
-                                    <p className="text-sm text-gray-400">{selectedRegistration.phone}</p>
+            {
+                selectedRegistration && (
+                    <div className="fixed inset-0 z-[150] bg-black/80 flex items-center justify-center p-4">
+                        <div className="bg-[#181818] border border-white/10 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
+                            <div className="p-6 border-b border-white/10 flex justify-between items-center">
+                                <h3 className="text-xl font-bold">Registration Details</h3>
+                                <button onClick={() => setSelectedRegistration(null)} className="p-2 hover:bg-white/10 rounded-full"><FaTimes size={20} /></button>
+                            </div>
+                            <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="text-xs text-gray-500 uppercase">Applicant</label>
+                                        <p className="text-lg font-bold">{selectedRegistration.name}</p>
+                                        <p className="text-sm text-gray-400">{selectedRegistration.email}</p>
+                                        <p className="text-sm text-gray-400">{selectedRegistration.phone}</p>
+                                    </div>
+                                    <div className="p-4 bg-white/5 rounded-lg">
+                                        <label className="text-xs text-gray-500 uppercase mb-2 block">College Info</label>
+                                        <p className="text-sm font-bold text-white mb-1">{selectedRegistration.college}</p>
+                                        <p className="text-xs text-gray-400">{selectedRegistration.degree} - {selectedRegistration.course} ({selectedRegistration.year})</p>
+                                        {selectedRegistration.isVeltechStudent && (
+                                            <p className="mt-2 text-xs text-purple-400 font-mono">ID: {selectedRegistration.vmNumber}</p>
+                                        )}
+                                    </div>
+                                    <div className="p-4 bg-purple-900/10 border border-purple-500/20 rounded-lg">
+                                        <label className="text-xs text-purple-400 uppercase mb-1 block">Registered For</label>
+                                        <p className="font-bold text-white text-lg">{selectedRegistration.eventName || 'Legacy Registration'}</p>
+                                        <p className="text-xs text-gray-500 font-mono">{selectedRegistration.eventId}</p>
+                                    </div>
                                 </div>
-                                <div className="p-4 bg-white/5 rounded-lg">
-                                    <label className="text-xs text-gray-500 uppercase mb-2 block">College Info</label>
-                                    <p className="text-sm font-bold text-white mb-1">{selectedRegistration.college}</p>
-                                    <p className="text-xs text-gray-400">{selectedRegistration.degree} - {selectedRegistration.course} ({selectedRegistration.year})</p>
-                                    {selectedRegistration.isVeltechStudent && (
-                                        <p className="mt-2 text-xs text-purple-400 font-mono">ID: {selectedRegistration.vmNumber}</p>
+
+                                <div className="space-y-4">
+                                    <label className="text-xs text-gray-500 uppercase">Payment Proof / ID Card</label>
+                                    {selectedRegistration.paymentScreenshotUrl ? (
+                                        <div className="rounded-xl overflow-hidden border border-white/10 group relative">
+                                            <img
+                                                src={selectedRegistration.paymentScreenshotUrl}
+                                                alt="Payment Screenshot"
+                                                className="w-full h-auto object-contain bg-black"
+                                            />
+                                            <a
+                                                href={selectedRegistration.paymentScreenshotUrl}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-3 py-1 rounded-full flex items-center gap-1 hover:bg-black/80"
+                                            >
+                                                Open Full <FaExternalLinkAlt size={12} />
+                                            </a>
+                                        </div>
+                                    ) : (
+                                        <div className="h-40 bg-white/5 rounded-xl flex items-center justify-center text-gray-500 text-sm">
+                                            No Payment Screenshot
+                                        </div>
+                                    )}
+
+                                    {selectedRegistration.idCardUrl && (
+                                        <div className="mt-4">
+                                            <label className="text-xs text-gray-500 uppercase mb-2 block">College ID</label>
+                                            <div className="h-24 rounded-lg overflow-hidden border border-white/10 relative">
+                                                <img src={selectedRegistration.idCardUrl} alt="ID Card" className="w-full h-full object-cover" />
+                                            </div>
+                                        </div>
                                     )}
                                 </div>
-                                <div className="p-4 bg-purple-900/10 border border-purple-500/20 rounded-lg">
-                                    <label className="text-xs text-purple-400 uppercase mb-1 block">Registered For</label>
-                                    <p className="font-bold text-white text-lg">{selectedRegistration.eventName || 'Legacy Registration'}</p>
-                                    <p className="text-xs text-gray-500 font-mono">{selectedRegistration.eventId}</p>
-                                </div>
                             </div>
-
-                            <div className="space-y-4">
-                                <label className="text-xs text-gray-500 uppercase">Payment Proof / ID Card</label>
-                                {selectedRegistration.paymentScreenshotUrl ? (
-                                    <div className="rounded-xl overflow-hidden border border-white/10 group relative">
-                                        <img
-                                            src={selectedRegistration.paymentScreenshotUrl}
-                                            alt="Payment Screenshot"
-                                            className="w-full h-auto object-contain bg-black"
-                                        />
-                                        <a
-                                            href={selectedRegistration.paymentScreenshotUrl}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-3 py-1 rounded-full flex items-center gap-1 hover:bg-black/80"
-                                        >
-                                            Open Full <FaExternalLinkAlt size={12} />
-                                        </a>
-                                    </div>
+                            <div className="p-6 border-t border-white/10 flex justify-end gap-3 bg-[#151515]">
+                                {selectedRegistration.isActive ? (
+                                    <span className="px-4 py-3 bg-green-500/20 text-green-500 font-bold rounded-xl flex items-center gap-2">
+                                        <FaCheck size={18} /> Verified
+                                    </span>
                                 ) : (
-                                    <div className="h-40 bg-white/5 rounded-xl flex items-center justify-center text-gray-500 text-sm">
-                                        No Payment Screenshot
-                                    </div>
-                                )}
-
-                                {selectedRegistration.idCardUrl && (
-                                    <div className="mt-4">
-                                        <label className="text-xs text-gray-500 uppercase mb-2 block">College ID</label>
-                                        <div className="h-24 rounded-lg overflow-hidden border border-white/10 relative">
-                                            <img src={selectedRegistration.idCardUrl} alt="ID Card" className="w-full h-full object-cover" />
-                                        </div>
-                                    </div>
+                                    <button
+                                        onClick={() => handleVerifyRegistration(selectedRegistration)}
+                                        className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl flex items-center gap-2 transition-colors shadow-lg shadow-green-900/20"
+                                    >
+                                        <FaCheck size={18} /> Verify & Activate User
+                                    </button>
                                 )}
                             </div>
-                        </div>
-                        <div className="p-6 border-t border-white/10 flex justify-end gap-3 bg-[#151515]">
-                            {selectedRegistration.isActive ? (
-                                <span className="px-4 py-3 bg-green-500/20 text-green-500 font-bold rounded-xl flex items-center gap-2">
-                                    <FaCheck size={18} /> Verified
-                                </span>
-                            ) : (
-                                <button
-                                    onClick={() => handleVerifyRegistration(selectedRegistration)}
-                                    className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl flex items-center gap-2 transition-colors shadow-lg shadow-green-900/20"
-                                >
-                                    <FaCheck size={18} /> Verify & Activate User
-                                </button>
-                            )}
                         </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 };

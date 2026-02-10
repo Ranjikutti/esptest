@@ -85,19 +85,36 @@ const MediaAssetSchema = {
 
 // Registration Schema
 const RegistrationSchema = new mongoose.Schema({
-  name: String,
+  // Common fields
   email: String,
-  college: String,
+  eventId: String,
+  eventName: String,
+  participationType: String, // 'Solo' or 'Team'
+
+  // Solo event fields
+  name: String,
   phone: String,
+  college: String,
+  department: String,
   degree: String,
   course: String,
   year: String,
-  isVeltechStudent: { type: Boolean, default: false },
-  vmNumber: String,
-  idCardUrl: String, // Kept simple for now as it's user upload
-  paymentScreenshotUrl: String, // Kept simple
-  eventOfInterest: String,
+  idCardUrl: String,
+
+  // Team event fields
+  teamName: String,
+  teamMembers: [{
+    name: String,
+    phone: String
+  }],
+  teamLeaderIdCardUrl: String,
+
+  // Payment
+  paymentScreenshotUrl: String,
   paymentStatus: { type: String, default: "Pending" },
+
+  // Admin
+  isActive: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now }
 });
 const RegistrationModel = mongoose.model('Registration', RegistrationSchema);
@@ -116,7 +133,8 @@ const EventSchema = new mongoose.Schema({
   participationType: String,
   ticketTiers: [String],
   rules: [String],
-  teamSize: String
+  teamSize: String,
+  coordinatorPhone: String // Event coordinator contact number
 });
 const EventModel = mongoose.model('Event', EventSchema);
 
@@ -210,6 +228,28 @@ app.get('/api/admin/registrations', async (req, res) => {
     const allStudents = await RegistrationModel.find().sort({ createdAt: -1 });
     res.json({ success: true, data: allStudents });
   } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post('/api/admin/verify-registration', async (req, res) => {
+  try {
+    const { registrationId, isActive } = req.body;
+    if (!registrationId) {
+      return res.status(400).json({ success: false, error: "Registration ID is required" });
+    }
+    const updatedReg = await RegistrationModel.findByIdAndUpdate(
+      registrationId,
+      { isActive: isActive },
+      { new: true }
+    );
+    if (!updatedReg) {
+      return res.status(404).json({ success: false, error: "Registration not found" });
+    }
+    console.log(`✅ Registration Verified: ${updatedReg.name} (${updatedReg._id})`);
+    res.json({ success: true, message: "Registration verified successfully!", data: updatedReg });
+  } catch (error) {
+    console.error("❌ Error verifying registration:", error);
     res.status(500).json({ success: false, error: error.message });
   }
 });

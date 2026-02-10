@@ -29,16 +29,17 @@ const mapBackendEventToFrontend = (beEvent: any): Event => {
     id: beEvent.id || beEvent._id,
     title: beEvent.title,
     category: beEvent.category,
-    img: beEvent.image?.url || "/images/events/default.jpg", // Fallback image
+    img: (beEvent.image?.type === 'image' ? beEvent.image.url : null) || "/images/events/default.jpg", // Fallback image
     desc: beEvent.description,
     rules: beEvent.rules || [],
-    contact: "Events Team", // Default contact as backend doesn't have it yet
+    contact: beEvent.coordinatorPhone || "Events Team", // Use coordinator phone if available
     videoSrc: beEvent.image?.type === 'video' ? beEvent.image.url : undefined
   };
 };
 
 export default function EventsPage() {
   const [events, setEvents] = useState<Event[]>([]);
+  const [backendEvents, setBackendEvents] = useState<AdminEvent[]>([]); // Store full backend events
   const [loading, setLoading] = useState(true);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [showRegistration, setShowRegistration] = useState(false);
@@ -62,6 +63,7 @@ export default function EventsPage() {
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) {
+          setBackendEvents(data); // Store full backend events
           const formattedEvents = data.map(mapBackendEventToFrontend);
           setEvents(formattedEvents);
         }
@@ -100,15 +102,23 @@ export default function EventsPage() {
 
   // Helper to convert local event to AdminEvent type for the form
   const getAdminEvent = (evt: Event): AdminEvent => {
+    // Find the full backend event data
+    const backendEvent = backendEvents.find(be => be.id === evt.id);
+
+    if (backendEvent) {
+      return backendEvent; // Return full backend event with all properties
+    }
+
+    // Fallback if not found
     return {
-      id: evt.id, // now string
+      id: evt.id,
       title: evt.title,
       category: evt.category,
       date: '',
       time: '',
       description: evt.desc,
       image: { url: evt.img, type: 'image' },
-      participationType: 'Solo', // Default assumption
+      participationType: 'Solo',
       ticketTiers: [],
       rules: evt.rules,
       maxSlots: 100,
@@ -171,6 +181,7 @@ export default function EventsPage() {
                   actionLabel="View More"
                   onAction={() => setSelectedEvent(event)}
                   videoSrc={event.videoSrc}
+                  imageSrc={event.img}
                 />
               </div>
             ))
@@ -330,6 +341,8 @@ export default function EventsPage() {
                   selectedEvent={getAdminEvent(selectedEvent)}
                   onClose={() => setShowRegistration(false)}
                   onSubmit={handleRegistrationSubmit}
+                  upiId={content?.upiId}
+                  qrCodeUrl={content?.qrCodeUrl}
                 />
               </div>
             </div>

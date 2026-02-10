@@ -37,6 +37,7 @@ export interface Event {
     image: MediaAsset | null;
     participationType: 'Solo' | 'Team';
     teamSize?: string;
+    coordinatorPhone?: string; // Event coordinator contact number
     // Ticket-based pricing
     isPassEvent?: boolean; // New toggle
     ticketTiers: string[];

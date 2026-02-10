@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Header from "@/components/sections/header";
 import MobileNav from "@/components/sections/MobileNav";
 import HeroSection from "@/components/sections/hero";
@@ -38,8 +39,14 @@ export default function Home() {
     fetchContent();
   }, []);
 
+  const router = useRouter();
+
   const handleRegisterClick = () => {
-    setShowTicketPortal(true);
+    if (content?.isTicketPassEnabled === false) {
+      router.push('/events');
+    } else {
+      setShowTicketPortal(true);
+    }
   };
 
   return (
