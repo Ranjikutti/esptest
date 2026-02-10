@@ -11,7 +11,13 @@ const app = express();
 
 // --- 1. MIDDLEWARE ---
 app.use(express.json());
-app.use(cors());
+// --- 1. MIDDLEWARE ---
+app.use(express.json());
+app.use(cors({
+  origin: ['https://esparanza.vercel.app', 'http://localhost:3000', 'https://esparanza-git-main-esparanzas-projects.vercel.app'],
+  credentials: true
+}));
+
 
 // DEBUG LOGGING
 console.log("DEBUG: Env Check");
